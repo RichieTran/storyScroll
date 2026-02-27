@@ -1,0 +1,385 @@
+import { useState, useRef, useEffect } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+
+const CATEGORIES = [
+  { id: 'minecraft',  label: 'Minecraft Parkour', color: '#4ec9b0' },
+  { id: 'subway',     label: 'Subway Surfers',    color: '#ce9178' },
+  { id: 'trackmania', label: 'Trackmania',         color: '#9cdcfe' },
+  { id: 'gta',        label: 'GTA Driving',        color: '#f44747' },
+  { id: 'satisfying', label: 'Satisfying / Slime', color: '#c586c0' },
+  { id: 'nature',     label: 'Nature / Scenery',   color: '#6a9955' },
+]
+
+function VideoCard({ video, isSelected, onClick }) {
+  return (
+    <button
+      className={`card card--clickable${isSelected ? ' card--selected' : ''}`}
+      style={styles.videoCard}
+      onClick={onClick}
+    >
+      {/* Thumbnail placeholder */}
+      <div style={{ ...styles.thumbnail, background: video.color + '22', borderColor: video.color + '44' }}>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+          stroke={video.color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="5 3 19 12 5 21 5 3"/>
+        </svg>
+        <span style={{ ...styles.thumbLabel, color: video.color }}>{video.label}</span>
+      </div>
+
+      <div style={styles.videoInfo}>
+        <span style={styles.videoName}>{video.name}</span>
+        <span className="badge" style={{ background: video.color + '22', color: video.color }}>
+          {video.category}
+        </span>
+        {video.duration && (
+          <span className="text-muted text-sm">{video.duration}</span>
+        )}
+      </div>
+
+      {isSelected && (
+        <div style={styles.checkmark}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+            stroke="#007acc" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+      )}
+    </button>
+  )
+}
+
+export default function VideoSelection() {
+  const location  = useLocation()
+  const navigate  = useNavigate()
+  const story     = location.state?.story
+
+  const [library, setLibrary]         = useState([])
+  const [libLoading, setLibLoading]   = useState(true)
+  const [filterCat, setFilterCat]     = useState(null)
+  const [selected, setSelected]       = useState(null)
+  const [uploadedFile, setUploadedFile] = useState(null)
+  const [tab, setTab]                 = useState('library')
+  const fileRef = useRef()
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const res  = await fetch('/api/videos')
+        const data = await res.json()
+        setLibrary(data.videos || [])
+      } catch {
+        setLibrary(MOCK_VIDEOS)
+      } finally {
+        setLibLoading(false)
+      }
+    }
+    load()
+  }, [])
+
+  const filtered = filterCat
+    ? library.filter((v) => v.categoryId === filterCat)
+    : library
+
+  function handleUpload(f) {
+    if (!f) return
+    if (!f.name.match(/\.(mp4|mov|webm)$/i)) {
+      alert('Please upload a .mp4, .mov, or .webm file.')
+      return
+    }
+    setUploadedFile(f)
+    setSelected({ id: 'upload', name: f.name, source: 'upload' })
+  }
+
+  function handleGenerate() {
+    if (!selected) return
+    navigate('/loading', { state: { story, video: selected } })
+  }
+
+  return (
+    <main className="page-content fade-in">
+      {/* Header with story preview */}
+      <div className="page-header">
+        <h1>Choose Background Video</h1>
+        <p>Select a video from the library or upload your own to use as the background.</p>
+      </div>
+
+      {story && (
+        <div className="card" style={styles.storyPreview}>
+          <div style={styles.previewHeader}>
+            <span style={styles.previewTag}>Your Story</span>
+            {story.subreddit && (
+              <span className="badge badge-blue">r/{story.subreddit}</span>
+            )}
+            <span className="text-muted text-sm" style={{ marginLeft: 'auto' }}>
+              {story.wordCount} words
+            </span>
+          </div>
+          <p style={styles.previewText}>
+            {story.text.slice(0, 180)}{story.text.length > 180 ? '…' : ''}
+          </p>
+        </div>
+      )}
+
+      {/* Tab: Library / Upload */}
+      <div className="tab-group" style={{ maxWidth: 300, marginBottom: 20 }}>
+        <button className={`tab-pill${tab === 'library' ? ' active' : ''}`} onClick={() => setTab('library')}>
+          Video Library
+        </button>
+        <button className={`tab-pill${tab === 'upload' ? ' active' : ''}`} onClick={() => setTab('upload')}>
+          Upload My Own
+        </button>
+      </div>
+
+      {tab === 'library' && (
+        <>
+          {/* Category filter */}
+          <div style={styles.filterRow}>
+            <button
+              className="btn btn-sm"
+              style={{ ...styles.pill, ...(filterCat === null ? styles.pillActive : {}) }}
+              onClick={() => setFilterCat(null)}
+            >
+              All
+            </button>
+            {CATEGORIES.map((c) => (
+              <button
+                key={c.id}
+                className="btn btn-sm"
+                style={{ ...styles.pill, ...(filterCat === c.id ? styles.pillActive : {}) }}
+                onClick={() => setFilterCat(c.id)}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+
+          {libLoading ? (
+            <div style={styles.loadingArea}>
+              <div className="spinner" />
+              <span style={{ color: '#9d9d9d', marginTop: 12 }}>Loading video library...</span>
+            </div>
+          ) : (
+            <div style={styles.videoGrid}>
+              {filtered.map((video) => (
+                <VideoCard
+                  key={video.id}
+                  video={video}
+                  isSelected={selected?.id === video.id}
+                  onClick={() => setSelected(video)}
+                />
+              ))}
+              {filtered.length === 0 && (
+                <p style={{ color: '#9d9d9d', gridColumn: '1/-1', padding: '24px 0' }}>
+                  No videos in this category yet.
+                </p>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
+      {tab === 'upload' && (
+        <div>
+          <div
+            className="dropzone"
+            onClick={() => fileRef.current?.click()}
+          >
+            <div style={styles.uploadIcon}>
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
+                <line x1="7" y1="2" x2="7" y2="22"/>
+                <line x1="17" y1="2" x2="17" y2="22"/>
+                <line x1="2" y1="12" x2="22" y2="12"/>
+                <line x1="2" y1="7" x2="7" y2="7"/>
+                <line x1="2" y1="17" x2="7" y2="17"/>
+                <line x1="17" y1="17" x2="22" y2="17"/>
+                <line x1="17" y1="7" x2="22" y2="7"/>
+              </svg>
+            </div>
+            <p className="dropzone__label">
+              {uploadedFile ? (
+                <span style={{ color: '#4ec9b0', fontWeight: 600 }}>{uploadedFile.name}</span>
+              ) : (
+                <>Click to select a video file</>
+              )}
+            </p>
+            <p className="dropzone__sub">Supported: .mp4, .mov, .webm (max 500MB)</p>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".mp4,.mov,.webm,video/*"
+              style={{ display: 'none' }}
+              onChange={(e) => handleUpload(e.target.files[0])}
+            />
+          </div>
+
+          {uploadedFile && (
+            <div className="card" style={{ marginTop: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ color: '#4ec9b0', fontWeight: 600 }}>{uploadedFile.name}</span>
+                <span className="text-muted text-sm">
+                  {(uploadedFile.size / (1024 * 1024)).toFixed(1)} MB
+                </span>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  style={{ marginLeft: 'auto' }}
+                  onClick={() => { setUploadedFile(null); setSelected(null) }}
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Actions */}
+      <div style={styles.actions}>
+        <button className="btn btn-secondary" onClick={() => navigate(-1)}>
+          Back
+        </button>
+        <button
+          className="btn btn-primary btn-lg"
+          disabled={!selected}
+          onClick={handleGenerate}
+        >
+          Generate Video
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="5 3 19 12 5 21 5 3"/>
+          </svg>
+        </button>
+      </div>
+    </main>
+  )
+}
+
+// Fallback mock data when backend is unavailable
+const MOCK_VIDEOS = CATEGORIES.map((cat, i) => ({
+  id:         `mock-${i}`,
+  name:       `${cat.label} Clip ${i + 1}`,
+  category:   cat.label,
+  categoryId: cat.id,
+  duration:   `${Math.floor(Math.random() * 8 + 2)}:${String(Math.floor(Math.random() * 60)).padStart(2,'0')}`,
+  label:      cat.label,
+  color:      cat.color,
+}))
+
+const styles = {
+  storyPreview: {
+    marginBottom: 24,
+  },
+  previewHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 10,
+  },
+  previewTag: {
+    fontSize: 11,
+    fontWeight: 600,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: '#6b6b6b',
+  },
+  previewText: {
+    fontSize: 13,
+    color: '#9d9d9d',
+    lineHeight: 1.7,
+  },
+  filterRow: {
+    display: 'flex',
+    gap: 6,
+    flexWrap: 'wrap',
+    marginBottom: 16,
+  },
+  pill: {
+    background: '#2d2d2d',
+    color: '#9d9d9d',
+    border: '1px solid #3e3e42',
+    borderRadius: 20,
+    padding: '4px 12px',
+    fontSize: 12,
+    cursor: 'pointer',
+  },
+  pillActive: {
+    background: 'rgba(0,122,204,0.15)',
+    color: '#4fc1ff',
+    borderColor: '#007acc',
+  },
+  videoGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+    gap: 10,
+    marginBottom: 24,
+  },
+  videoCard: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+    cursor: 'pointer',
+    background: 'none',
+    border: 'none',
+    padding: 0,
+    position: 'relative',
+    textAlign: 'left',
+  },
+  thumbnail: {
+    aspectRatio: '16/9',
+    borderRadius: 4,
+    border: '1px solid',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  thumbLabel: {
+    fontSize: 11,
+    fontWeight: 600,
+    letterSpacing: 0.5,
+  },
+  videoInfo: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+  },
+  videoName: {
+    fontSize: 13,
+    fontWeight: 500,
+    color: '#cccccc',
+  },
+  checkmark: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 24,
+    height: 24,
+    borderRadius: '50%',
+    background: '#007acc',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  uploadIcon: {
+    color: '#6b6b6b',
+    marginBottom: 12,
+    display: 'flex',
+    justifyContent: 'center',
+  },
+  loadingArea: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    padding: '48px 0',
+  },
+  actions: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 16,
+    borderTop: '1px solid #3e3e42',
+    marginTop: 24,
+  },
+}
