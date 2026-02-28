@@ -180,6 +180,36 @@ export default function VideoSelection() {
 
       {tab === 'upload' && (
         <div>
+          {/* Portrait crop explainer */}
+          <div style={styles.cropInfo}>
+            <div style={styles.cropFrameWrap}>
+              {/* Landscape source */}
+              <div style={styles.cropItem}>
+                <span style={styles.cropDimLabel}>Your video</span>
+                <div style={styles.cropLandscape}>
+                  {/* Portrait crop overlay */}
+                  <div style={styles.cropOverlay} />
+                </div>
+              </div>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                stroke="#6b6b6b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                style={{ flexShrink: 0 }}>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+                <polyline points="12 5 19 12 12 19"/>
+              </svg>
+              {/* Portrait result */}
+              <div style={styles.cropItem}>
+                <span style={styles.cropDimLabel}>Output</span>
+                <div style={styles.cropPortrait} />
+              </div>
+            </div>
+            <p style={styles.cropInfoText}>
+              Upload any video: landscape, square, or vertical. We automatically
+              center-crop it to portrait (9:16) so it's ready for TikTok and Reels.
+              No editing needed on your end!
+            </p>
+          </div>
+
           <div
             className="dropzone"
             onClick={() => fileRef.current?.click()}
@@ -187,14 +217,9 @@ export default function VideoSelection() {
             <div style={styles.uploadIcon}>
               <svg width="36" height="36" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
-                <line x1="7" y1="2" x2="7" y2="22"/>
-                <line x1="17" y1="2" x2="17" y2="22"/>
-                <line x1="2" y1="12" x2="22" y2="12"/>
-                <line x1="2" y1="7" x2="7" y2="7"/>
-                <line x1="2" y1="17" x2="7" y2="17"/>
-                <line x1="17" y1="17" x2="22" y2="17"/>
-                <line x1="17" y1="7" x2="22" y2="7"/>
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
               </svg>
             </div>
             <p className="dropzone__label">
@@ -204,7 +229,7 @@ export default function VideoSelection() {
                 <>Click to select a video file</>
               )}
             </p>
-            <p className="dropzone__sub">Supported: .mp4, .mov, .webm (max 500MB)</p>
+            <p className="dropzone__sub">Any resolution — .mp4, .mov, .webm (max 500MB)</p>
             <input
               ref={fileRef}
               type="file"
@@ -267,6 +292,67 @@ const MOCK_VIDEOS = CATEGORIES.map((cat, i) => ({
 }))
 
 const styles = {
+  cropInfo: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 20,
+    background: '#252526',
+    border: '1px solid #3e3e42',
+    borderRadius: 6,
+    padding: '14px 18px',
+    marginBottom: 16,
+  },
+  cropFrameWrap: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    flexShrink: 0,
+  },
+  cropItem: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 5,
+  },
+  cropLandscape: {
+    width: 72,
+    height: 40,
+    background: '#3c3c3c',
+    border: '1px solid #4a4a4f',
+    borderRadius: 3,
+    position: 'relative',
+  },
+  cropOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: '50%',
+    transform: 'translateX(-50%)',
+    width: 22,
+    height: '100%',
+    background: 'rgba(0,122,204,0.25)',
+    border: '1.5px solid #007acc',
+    borderRadius: 2,
+  },
+  cropPortrait: {
+    width: 26,
+    height: 46,
+    background: '#3c3c3c',
+    border: '1.5px solid #007acc',
+    borderRadius: 3,
+  },
+  cropDimLabel: {
+    fontSize: 9,
+    color: '#9d9d9d',
+    letterSpacing: 0.3,
+    lineHeight: 1,
+    fontWeight: 500,
+  },
+  cropInfoText: {
+    fontSize: 12,
+    color: '#9d9d9d',
+    lineHeight: 1.7,
+    flex: 1,
+  },
   storyPreview: {
     marginBottom: 24,
   },
