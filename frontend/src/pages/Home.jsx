@@ -32,12 +32,21 @@ function RedditIcon() {
   return (
     <svg width="32" height="32" viewBox="0 0 24 24" fill="none"
       stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10"/>
-      <path d="M16 11.5c.5 0 1 .4 1 1s-.4 1-1 1"/>
-      <path d="M8 11.5c-.5 0-1 .4-1 1s.4 1 1 1"/>
-      <path d="M9.5 15.5c.7.7 2.8.7 3.5 0"/>
-      <circle cx="17.5" cy="7" r="1.5"/>
-      <path d="M15 8l1.5-1.5"/>
+      {/* Head — fills most of the frame */}
+      <circle cx="12" cy="13" r="7"/>
+      {/* Antenna stem */}
+      <line x1="12" y1="6" x2="12" y2="3.8"/>
+      {/* Antenna ball — prominent */}
+      <circle cx="12" cy="2.5" r="1.5" fill="currentColor" stroke="none"/>
+      {/* Left ear */}
+      <path d="M5 10.5 Q3.5 13 5.5 14.5"/>
+      {/* Right ear */}
+      <path d="M19 10.5 Q20.5 13 18.5 14.5"/>
+      {/* Eyes — larger filled circles */}
+      <circle cx="9" cy="12.5" r="1.4" fill="currentColor" stroke="none"/>
+      <circle cx="15" cy="12.5" r="1.4" fill="currentColor" stroke="none"/>
+      {/* Wide smile */}
+      <path d="M8.5 16 Q12 19.5 15.5 16"/>
     </svg>
   )
 }

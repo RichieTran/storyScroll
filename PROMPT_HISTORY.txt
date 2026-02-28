@@ -1,0 +1,136 @@
+I worked with Claude Opus 4.6 to create a roadmap of my idea then passed it to Claude Code Sonnet 4.6 at first to start creating.
+
+1. I'm creating a website where users can create videos for themselves or for tiktok/instagram where they find a story (paste, write, find off trending reddit stories) and use them with videos (their own or videos of minecraft parkour, or trackmania, or subway surfers, etc.)
+
+Here is a roadmap I created:
+"Phase 0: Setup & Tools
+Dev Tools:
+
+VS Code (code editor)
+Git/GitHub (version control)
+Node.js (frontend tooling)
+Python 3.10+ (backend)
+FFmpeg (video processing — free, install locally)
+
+API Keys Needed:
+
+TTS API — pick one:
+
+Free: gTTS (Google TTS Python library, no key needed)
+Better quality: ElevenLabs (free tier, needs API key)
+Mid-tier: Google Cloud TTS (free tier, needs key)
+
+
+AI Video Generation (stretch goal only): Replicate or Runway (paid)
+Reddit: No API key needed — using public JSON endpoints
+
+
+Phase 1: Frontend
+Tech: React
+Pages/views to build:
+
+Home page — choose your path: Write, Paste, Upload, or Browse Reddit
+Story input page — text area + file upload
+Reddit browser page — trending/top stories, user picks one
+Video selection page — upload your own OR pick from the video library
+Loading page — progress indicator while backend processes
+Result page — video player to watch + download button
+
+
+Phase 2: Backend Foundation
+Tech: Python with Flask or FastAPI
+API endpoints:
+
+POST /api/story — receive story text from frontend
+GET /api/reddit/stories?sort=hot&subreddit=tifu — fetch Reddit stories
+GET /api/videos — list available background videos from library
+POST /api/generate — start video generation (takes story + video choice)
+GET /api/video/<id> — serve the finished video for preview/download
+
+Also set up:
+
+File storage for uploads and generated videos
+Error handling
+.env file for any API keys (TTS)
+
+
+Phase 3: Reddit Integration
+Tech: Reddit public JSON endpoints (no API key)
+
+Fetch from https://www.reddit.com/r/{subreddit}/hot.json and /top.json?t=week
+Backend parses the JSON and sends clean story data to frontend (title, body, author, upvotes)
+Frontend displays stories in a nice browsable list
+User clicks one to select it
+
+Subreddits to support:
+
+r/tifu
+r/nosleep
+r/AmITheAsshole
+r/relationship_advice
+r/MaliciousCompliance
+Custom subreddit input
+
+
+Phase 4: Text-to-Speech
+Tech: gTTS (free) or ElevenLabs (better quality)
+
+Backend receives the story text
+Generates an audio file (.mp3)
+Stores it temporarily on the server
+Handle long stories by chunking text if needed
+Test with different story lengths
+
+
+Phase 5: Video Library & Database
+Tech: SQLite (simple) or PostgreSQL (more robust)
+Database stores background video metadata:
+
+id, name, category, file_path, duration
+Categories like: Subway Surfers, Minecraft Parkour, Satisfying/Slime, GTA, etc.
+
+Features:
+
+Pre-load with royalty-free/stock clips
+API endpoint to browse the library
+Support user-uploaded videos (stored temporarily)
+
+
+Phase 6: Video Compositing (The Core)
+Tech: FFmpeg via Python (ffmpeg-python or subprocess)
+This is where everything comes together:
+
+Take the selected background video
+Overlay the TTS audio
+Add text captions/subtitles synced to the narration
+Loop or trim the video to match audio length
+Render final .mp4
+Send to frontend → user watches in video player + downloads
+
+Key challenges:
+
+Syncing video length to audio length
+Caption/subtitle timing
+Processing time (consider async task queue for longer videos)
+
+
+Phase 7: Polish & UX
+
+Loading animations and progress bars
+Error messages (TTS fails, video too long, etc.)
+Mobile responsive design
+Clean, modern UI styling
+Maybe add a "history" of previously generated videos
+
+
+Phase 8 (Stretch Goal): AI Video Generation
+Tech: Replicate or Runway API (paid)
+
+User enters a prompt describing what video they want
+API generates a short video clip
+That clip becomes the background instead of a library video
+Note: slow (30s-2min) and costs money per generation"
+
+right now can you focus on phases 1 and 2. for the front end, i want a colorscheme similar to vsCode where there is a dark grey background with "tabs" or sections for the user to navigate to, and the cards, buttons, tabs, etc. should be a lighter grey for now
+
+2. 

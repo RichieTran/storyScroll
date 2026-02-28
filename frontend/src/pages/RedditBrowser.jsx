@@ -24,6 +24,18 @@ function UpIcon() {
   )
 }
 
+function ChevronIcon({ open }) {
+  return (
+    <svg
+      width="16" height="16" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      style={{ transition: 'transform 0.2s ease', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}
+    >
+      <polyline points="6 9 12 15 18 9"/>
+    </svg>
+  )
+}
+
 function fmtUpvotes(n) {
   if (n >= 1000) return (n / 1000).toFixed(1) + 'k'
   return String(n)
@@ -42,18 +54,20 @@ function wordCount(text) {
 export default function RedditBrowser() {
   const navigate = useNavigate()
   const [subreddit, setSubreddit] = useState('tifu')
-  const [customSub, setCustomSub]   = useState('')
-  const [sort, setSort]             = useState('hot')
-  const [stories, setStories]       = useState([])
-  const [loading, setLoading]       = useState(false)
-  const [error, setError]           = useState(null)
-  const [selected, setSelected]     = useState(null)
+  const [customSub, setCustomSub] = useState('')
+  const [sort, setSort]           = useState('hot')
+  const [stories, setStories]     = useState([])
+  const [loading, setLoading]     = useState(false)
+  const [error, setError]         = useState(null)
+  const [openId, setOpenId]       = useState(null)   // which card is expanded
+  const [selected, setSelected]   = useState(null)   // which story is chosen for use
 
   const activeSub = customSub.trim() || subreddit
 
   async function fetchStories() {
     setLoading(true)
     setError(null)
+    setOpenId(null)
     setSelected(null)
     try {
       const params = new URLSearchParams({ subreddit: activeSub, sort })
@@ -70,8 +84,16 @@ export default function RedditBrowser() {
 
   useEffect(() => { fetchStories() }, [subreddit, sort])
 
-  function handleSelect(story) {
-    setSelected(story.id === selected?.id ? null : story)
+  function handleToggle(story) {
+    if (openId === story.id) {
+      // Clicking the open card closes it and deselects
+      setOpenId(null)
+      setSelected(null)
+    } else {
+      // Open this card and select it; close the previous
+      setOpenId(story.id)
+      setSelected(story)
+    }
   }
 
   function handleContinue() {
@@ -95,12 +117,11 @@ export default function RedditBrowser() {
     <main className="page-content fade-in">
       <div className="page-header">
         <h1>Browse Reddit</h1>
-        <p>Pick a trending story and we'll narrate it for your video.</p>
+        <p>Click a story to read it in full, then hit "Use This Story" to continue.</p>
       </div>
 
       {/* Controls */}
       <div style={styles.controls}>
-        {/* Subreddit pills */}
         <div style={styles.controlRow}>
           <span style={styles.controlLabel}>Subreddit</span>
           <div style={styles.pillRow}>
@@ -128,7 +149,6 @@ export default function RedditBrowser() {
           />
         </div>
 
-        {/* Sort + refresh */}
         <div style={styles.controlRow}>
           <span style={styles.controlLabel}>Sort by</span>
           <div className="tab-group" style={{ maxWidth: 260 }}>
@@ -155,7 +175,7 @@ export default function RedditBrowser() {
 
       <div className="divider" style={{ marginTop: 8 }} />
 
-      {/* Story list */}
+      {/* Error */}
       {error && (
         <div style={styles.errorBox}>
           <strong>Error:</strong> {error}
@@ -165,6 +185,7 @@ export default function RedditBrowser() {
         </div>
       )}
 
+      {/* Loading */}
       {loading && (
         <div style={styles.loadingArea}>
           <div className="spinner" />
@@ -172,45 +193,80 @@ export default function RedditBrowser() {
         </div>
       )}
 
+      {/* Empty */}
       {!loading && !error && stories.length === 0 && (
         <div style={styles.emptyArea}>
           <p style={{ color: '#9d9d9d' }}>No stories found. Try a different subreddit or sort.</p>
         </div>
       )}
 
+      {/* Story list — accordion */}
       {!loading && stories.length > 0 && (
         <div style={styles.storyList}>
           {stories.map((story) => {
+            const isOpen     = openId === story.id
             const isSelected = selected?.id === story.id
-            const wc = wordCount(`${story.title} ${story.body}`)
-            const readSecs = (wc / 130) * 60
+            const wc         = wordCount(`${story.title} ${story.body}`)
+            const readSecs   = (wc / 130) * 60
+
             return (
-              <button
+              <div
                 key={story.id}
+                className={`card${isSelected ? ' card--selected' : ''}`}
                 style={styles.storyCard}
-                className={`card card--clickable${isSelected ? ' card--selected' : ''}`}
-                onClick={() => handleSelect(story)}
               >
-                <div style={styles.storyMeta}>
-                  <span style={styles.upvotes}>
-                    <UpIcon /> {fmtUpvotes(story.upvotes)}
-                  </span>
-                  <span className="text-muted text-sm">r/{story.subreddit}</span>
-                  <span className="text-muted text-sm">by u/{story.author}</span>
-                  <span className="badge badge-blue" style={{ marginLeft: 'auto' }}>
-                    {fmtMins(readSecs)}
-                  </span>
+                {/* ── Clickable header ── */}
+                <div
+                  style={styles.cardHeader}
+                  onClick={() => handleToggle(story)}
+                >
+                  <div style={styles.storyMeta}>
+                    <span style={styles.upvotes}>
+                      <UpIcon /> {fmtUpvotes(story.upvotes)}
+                    </span>
+                    <span className="text-muted text-sm">r/{story.subreddit}</span>
+                    <span className="text-muted text-sm">by u/{story.author}</span>
+                    <span className="badge badge-blue" style={{ marginLeft: 'auto' }}>
+                      {fmtMins(readSecs)}
+                    </span>
+                    <ChevronIcon open={isOpen} />
+                  </div>
+
+                  <h3 style={styles.storyTitle}>{story.title}</h3>
+
+                  {/* Collapsed preview */}
+                  {!isOpen && (
+                    <p style={styles.storyPreview}>
+                      {story.body.slice(0, 220)}{story.body.length > 220 ? '…' : ''}
+                    </p>
+                  )}
                 </div>
-                <h3 style={styles.storyTitle}>{story.title}</h3>
-                <p style={styles.storyPreview}>
-                  {story.body.slice(0, 220)}{story.body.length > 220 ? '…' : ''}
-                </p>
-                {isSelected && (
-                  <div style={styles.selectedBanner}>
-                    Selected — {wc} words
+
+                {/* ── Expanded full body ── */}
+                {isOpen && (
+                  <div style={styles.fullBody}>
+                    <div style={styles.fullBodyScroll}>
+                      {story.body.split('\n').filter(Boolean).map((para, i) => (
+                        <p key={i} style={styles.bodyPara}>{para}</p>
+                      ))}
+                    </div>
+                    <div style={styles.selectedFooter}>
+                      <span style={{ color: '#4fc1ff', fontSize: 12, fontWeight: 600 }}>
+                        Selected — {wc} words
+                      </span>
+                      <a
+                        href={story.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={styles.sourceLink}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        View on Reddit
+                      </a>
+                    </div>
                   </div>
                 )}
-              </button>
+              </div>
             )
           })}
         </div>
@@ -308,15 +364,15 @@ const styles = {
   storyList: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 10,
+    gap: 8,
     marginBottom: 24,
   },
   storyCard: {
-    textAlign: 'left',
-    background: 'none',
-    border: 'none',
-    padding: 0,
-    width: '100%',
+    overflow: 'hidden',
+  },
+  cardHeader: {
+    cursor: 'pointer',
+    userSelect: 'none',
   },
   storyMeta: {
     display: 'flex',
@@ -345,13 +401,36 @@ const styles = {
     color: '#9d9d9d',
     lineHeight: 1.6,
   },
-  selectedBanner: {
-    marginTop: 12,
-    paddingTop: 10,
-    borderTop: '1px solid rgba(0,122,204,0.3)',
-    color: '#4fc1ff',
+  fullBody: {
+    marginTop: 14,
+    borderTop: '1px solid #3e3e42',
+    paddingTop: 14,
+  },
+  fullBodyScroll: {
+    maxHeight: 400,
+    overflowY: 'auto',
+    paddingRight: 6,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+  },
+  bodyPara: {
+    fontSize: 14,
+    color: '#cccccc',
+    lineHeight: 1.8,
+  },
+  selectedFooter: {
+    marginTop: 14,
+    paddingTop: 12,
+    borderTop: '1px solid rgba(0,122,204,0.25)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sourceLink: {
     fontSize: 12,
-    fontWeight: 600,
+    color: '#9d9d9d',
+    textDecoration: 'none',
   },
   actions: {
     display: 'flex',

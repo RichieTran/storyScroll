@@ -12,7 +12,7 @@ os.makedirs(VIDEOS_DIR, exist_ok=True)
 VIDEO_LIBRARY: list[dict] = [
     {
         "id":         "mc-1",
-        "name":       "Minecraft Parkour Loop 1",
+        "name":       "Minecraft Parkour Clip 1",
         "category":   "Minecraft Parkour",
         "categoryId": "minecraft",
         "file_path":  "videos/mc_parkour_1.mp4",
@@ -21,7 +21,7 @@ VIDEO_LIBRARY: list[dict] = [
     },
     {
         "id":         "mc-2",
-        "name":       "Minecraft Parkour Loop 2",
+        "name":       "Minecraft Parkour Clip 2",
         "category":   "Minecraft Parkour",
         "categoryId": "minecraft",
         "file_path":  "videos/mc_parkour_2.mp4",
@@ -30,7 +30,7 @@ VIDEO_LIBRARY: list[dict] = [
     },
     {
         "id":         "ss-1",
-        "name":       "Subway Surfers Run 1",
+        "name":       "Subway Surfers Clip 1",
         "category":   "Subway Surfers",
         "categoryId": "subway",
         "file_path":  "videos/subway_1.mp4",
@@ -39,7 +39,7 @@ VIDEO_LIBRARY: list[dict] = [
     },
     {
         "id":         "ss-2",
-        "name":       "Subway Surfers Run 2",
+        "name":       "Subway Surfers Clip 2",
         "category":   "Subway Surfers",
         "categoryId": "subway",
         "file_path":  "videos/subway_2.mp4",
@@ -48,7 +48,7 @@ VIDEO_LIBRARY: list[dict] = [
     },
     {
         "id":         "tm-1",
-        "name":       "Trackmania Speed Run",
+        "name":       "Trackmania Clip 1",
         "category":   "Trackmania",
         "categoryId": "trackmania",
         "file_path":  "videos/trackmania_1.mp4",
@@ -57,7 +57,7 @@ VIDEO_LIBRARY: list[dict] = [
     },
     {
         "id":         "gta-1",
-        "name":       "GTA Night Drive",
+        "name":       "GTA Driving Clip 1",
         "category":   "GTA Driving",
         "categoryId": "gta",
         "file_path":  "videos/gta_1.mp4",
@@ -66,7 +66,7 @@ VIDEO_LIBRARY: list[dict] = [
     },
     {
         "id":         "sat-1",
-        "name":       "Satisfying Slime Mix",
+        "name":       "Satisfying Clip 1",
         "category":   "Satisfying / Slime",
         "categoryId": "satisfying",
         "file_path":  "videos/satisfying_1.mp4",
@@ -75,7 +75,7 @@ VIDEO_LIBRARY: list[dict] = [
     },
     {
         "id":         "nat-1",
-        "name":       "Forest Rain Loop",
+        "name":       "Nature Clip 1",
         "category":   "Nature / Scenery",
         "categoryId": "nature",
         "file_path":  "videos/nature_1.mp4",
