@@ -5,7 +5,7 @@ export default function Result() {
   const navigate  = useNavigate()
   const { story, video, jobId } = location.state || {}
 
-  const videoUrl = jobId ? `/api/video/${jobId}` : null
+  const videoUrl = jobId ? `/api/video/${jobId}.mp4` : null
 
   function handleDownload() {
     if (!videoUrl) return
@@ -172,6 +172,8 @@ const styles = {
     justifyContent: 'center',
     border: '1px solid #3e3e42',
     marginBottom: 24,
+    marginLeft: 'auto',
+    marginRight: 'auto',
   },
   video: {
     width: '100%',

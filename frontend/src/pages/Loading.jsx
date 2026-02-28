@@ -2,13 +2,18 @@ import { useState, useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 const STEPS = [
-  { id: 'story',   label: 'Processing story text',       duration: 1200 },
-  { id: 'tts',     label: 'Generating audio narration',  duration: 3500 },
-  { id: 'captions',label: 'Creating caption timing',     duration: 1800 },
-  { id: 'video',   label: 'Compositing background video',duration: 4000 },
-  { id: 'render',  label: 'Rendering final output',      duration: 2500 },
-  { id: 'done',    label: 'Done!',                        duration: 0 },
+  { id: 'tts',       label: 'Generating audio narration' },
+  { id: 'analyze',   label: 'Analyzing audio' },
+  { id: 'composite', label: 'Compositing video + audio' },
+  { id: 'done',      label: 'Done!' },
 ]
+
+const STEP_MAP = {
+  'Generating audio narration': 0,
+  'Analyzing audio':            1,
+  'Compositing video + audio':  2,
+  'Complete':                   3,
+}
 
 const FUN_FACTS = [
   'The average TikTok story video is between 60 and 90 seconds long.',
@@ -20,19 +25,18 @@ const FUN_FACTS = [
 ]
 
 export default function Loading() {
-  const location   = useLocation()
-  const navigate   = useNavigate()
+  const location = useLocation()
+  const navigate = useNavigate()
   const { story, video } = location.state || {}
 
-  const [currentStep, setCurrentStep] = useState(0)
-  const [progress, setProgress]       = useState(0)
-  const [jobId, setJobId]             = useState(null)
-  const [factIndex, setFactIndex]     = useState(0)
-  const [error, setError]             = useState(null)
-  const intervalRef = useRef(null)
-  const stepRef     = useRef(0)
+  const [jobId, setJobId]         = useState(null)
+  const [progress, setProgress]   = useState(0)
+  const [stepLabel, setStepLabel] = useState('Starting...')
+  const [factIndex, setFactIndex] = useState(0)
+  const [error, setError]         = useState(null)
+  const pollRef = useRef(null)
 
-  // Kick off the generation job
+  // Start the generation job
   useEffect(() => {
     async function startJob() {
       try {
@@ -51,47 +55,39 @@ export default function Loading() {
     if (story && video) startJob()
   }, [])
 
-  // Simulate step progress (real polling would use the job_id)
+  // Poll job status once we have a job_id
   useEffect(() => {
-    let elapsed = 0
-    const totalDuration = STEPS.reduce((sum, s) => sum + s.duration, 0)
+    if (!jobId) return
 
-    intervalRef.current = setInterval(() => {
-      elapsed += 100
-      const pct = Math.min((elapsed / totalDuration) * 100, 99)
-      setProgress(pct)
+    async function poll() {
+      try {
+        const res  = await fetch(`/api/generate/${jobId}/status`)
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.detail || 'Status check failed')
 
-      let cumulative = 0
-      for (let i = 0; i < STEPS.length - 1; i++) {
-        cumulative += STEPS[i].duration
-        if (elapsed < cumulative) {
-          setCurrentStep(i)
-          stepRef.current = i
-          break
+        setProgress(data.progress)
+        setStepLabel(data.step)
+
+        if (data.status === 'done') {
+          clearInterval(pollRef.current)
+          setProgress(100)
+          setTimeout(() => {
+            navigate('/result', { state: { story, video, jobId } })
+          }, 800)
+        } else if (data.status === 'error') {
+          clearInterval(pollRef.current)
+          setError(data.error || 'An unknown error occurred.')
         }
-        if (i === STEPS.length - 2) {
-          setCurrentStep(STEPS.length - 1)
-          stepRef.current = STEPS.length - 1
-        }
+      } catch (e) {
+        clearInterval(pollRef.current)
+        setError(e.message)
       }
-    }, 100)
-
-    // When all steps done, navigate to result
-    const total = STEPS.reduce((s, x) => s + x.duration, 0)
-    const timer = setTimeout(() => {
-      clearInterval(intervalRef.current)
-      setProgress(100)
-      setCurrentStep(STEPS.length - 1)
-      setTimeout(() => {
-        navigate('/result', { state: { story, video, jobId: jobId || 'demo-job' } })
-      }, 800)
-    }, total)
-
-    return () => {
-      clearInterval(intervalRef.current)
-      clearTimeout(timer)
     }
-  }, [])
+
+    poll()
+    pollRef.current = setInterval(poll, 1000)
+    return () => clearInterval(pollRef.current)
+  }, [jobId])
 
   // Cycle fun facts
   useEffect(() => {
@@ -100,6 +96,8 @@ export default function Loading() {
     }, 4000)
     return () => clearInterval(t)
   }, [])
+
+  const currentStep = STEP_MAP[stepLabel] ?? -1
 
   if (error) {
     return (
@@ -149,7 +147,7 @@ export default function Loading() {
           <div className="progress-bar" style={{ height: 6 }}>
             <div
               className="progress-bar__fill"
-              style={{ width: `${progress}%` }}
+              style={{ width: `${progress}%`, transition: 'width 0.5s ease' }}
             />
           </div>
           <span style={styles.progressLabel}>{Math.round(progress)}%</span>
@@ -158,14 +156,13 @@ export default function Loading() {
         {/* Steps */}
         <div style={styles.stepList}>
           {STEPS.map((step, i) => {
-            const done    = i < currentStep
-            const active  = i === currentStep
-            const pending = i > currentStep
+            const done   = i < currentStep
+            const active = i === currentStep
             return (
               <div key={step.id} style={styles.stepRow}>
                 <div style={{
                   ...styles.stepDot,
-                  background: done ? '#4ec9b0' : active ? '#007acc' : '#3c3c3c',
+                  background:  done ? '#4ec9b0' : active ? '#007acc' : '#3c3c3c',
                   borderColor: done ? '#4ec9b0' : active ? '#007acc' : '#3e3e42',
                 }}>
                   {done && (

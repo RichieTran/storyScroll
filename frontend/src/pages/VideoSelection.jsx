@@ -11,19 +11,74 @@ const CATEGORIES = [
 ]
 
 function VideoCard({ video, isSelected, onClick }) {
+  const [thumbError, setThumbError] = useState(false)
+
+  const filename = video.file_path?.split('/').pop()
+  const videoUrl = filename ? `/api/library/${encodeURIComponent(filename)}` : null
+  const showVideo = Boolean(videoUrl && !thumbError)
+
   return (
     <button
       className={`card card--clickable${isSelected ? ' card--selected' : ''}`}
       style={styles.videoCard}
       onClick={onClick}
     >
-      {/* Thumbnail placeholder */}
-      <div style={{ ...styles.thumbnail, background: video.color + '22', borderColor: video.color + '44' }}>
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
-          stroke={video.color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <polygon points="5 3 19 12 5 21 5 3"/>
-        </svg>
-        <span style={{ ...styles.thumbLabel, color: video.color }}>{video.label}</span>
+      {/* Thumbnail */}
+      <div style={{
+        ...styles.thumbnail,
+        borderColor: video.color + '44',
+        position: 'relative',
+        overflow: 'hidden',
+        background: '#1e1e1e',
+      }}>
+        {/* Video frame underneath */}
+        {showVideo && (
+          <video
+            src={videoUrl}
+            preload="metadata"
+            muted
+            playsInline
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+            onLoadedMetadata={(e) => { e.target.currentTime = 1 }}
+            onError={() => setThumbError(true)}
+          />
+        )}
+
+        {/* Color + icon overlay — always shown on top */}
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          background: video.color + (showVideo ? '99' : '22'),
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+        }}>
+          {showVideo ? (
+            <div style={{
+              padding: '8px 14px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 6,
+            }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+                stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+              </svg>
+              <span style={{ ...styles.thumbLabel, color: '#ffffff' }}>{video.category}</span>
+            </div>
+          ) : (
+            <>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+                stroke={video.color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+              </svg>
+              <span style={{ ...styles.thumbLabel, color: video.color }}>{video.category}</span>
+            </>
+          )}
+        </div>
       </div>
 
       <div style={styles.videoInfo}>
@@ -39,7 +94,7 @@ function VideoCard({ video, isSelected, onClick }) {
       {isSelected && (
         <div style={styles.checkmark}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-            stroke="#007acc" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            stroke="#ffffff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12"/>
           </svg>
         </div>

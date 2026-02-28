@@ -133,4 +133,11 @@ Note: slow (30s-2min) and costs money per generation"
 
 right now can you focus on phases 1 and 2. for the front end, i want a colorscheme similar to vsCode where there is a dark grey background with "tabs" or sections for the user to navigate to, and the cards, buttons, tabs, etc. should be a lighter grey for now
 
-2. 
+2. can you make so when a user clicks one of of the reddit stories it shows the whole story? I think that is more efficient, also you can make it so when they click another one it closes the last one so only one can be open at all times
+
+3. for duration, can you display the video length instead of a hard-coded duration
+
+4. can you make it now so that when i choose a video, it uses gtts to add tts to the chosen story on top of the chosen video
+
+5. can you switch to edge-tts instead of gtts
+

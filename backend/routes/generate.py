@@ -3,6 +3,8 @@ from pydantic import BaseModel
 import uuid
 import asyncio
 import os
+import subprocess
+import json
 
 router = APIRouter()
 
@@ -28,62 +30,72 @@ class JobStatus(BaseModel):
 
 
 async def run_generation(job_id: str, story: dict, video: dict):
-    """
-    Phase 6 pipeline — implement each step:
-
-    1. TTS
-       gTTS:        tts = gTTS(story["text"]); tts.save("audio.mp3")
-       ElevenLabs:  POST https://api.elevenlabs.io/v1/text-to-speech/{voice_id}
-
-    2. Captions
-       - Get audio duration via ffprobe
-       - Split story text into timed chunks (~3 sec each)
-       - Write as an .ass or .srt subtitle file
-
-    3. Normalize background video → always output 1080x1920 regardless of input
-       Library clips are pre-cropped. User uploads use:
-
-       ffmpeg -i {video_path} \
-         -vf "scale=w=1080:h=1920:force_original_aspect_ratio=increase,
-              crop=1080:1920:(iw-ow)/2:(ih-oh)/2" \
-         -t {audio_duration} \
-         -c:v libx264 -preset fast normalized.mp4
-
-    4. Composite — merge normalized video + TTS audio + subtitles:
-
-       ffmpeg -i normalized.mp4 -i audio.mp3 \
-         -vf "ass=captions.ass" \
-         -map 0:v -map 1:a \
-         -shortest -c:v libx264 -crf 23 -preset fast \
-         -c:a aac -b:a 192k \
-         output/{job_id}.mp4
-    """
-    steps = [
-        ("tts",       "Generating audio narration",  2.0),
-        ("captions",  "Building caption file",       1.0),
-        ("normalize", "Cropping video to portrait",  1.5),
-        ("composite", "Compositing video + audio",   4.0),
-        ("render",    "Rendering final output",       2.0),
-    ]
-
     try:
-        total_time = sum(s[2] for s in steps)
-        elapsed    = 0.0
-
-        for step_id, step_label, duration in steps:
-            JOBS[job_id].update({"step": step_label, "status": "processing"})
-            await asyncio.sleep(duration)
-            elapsed += duration
-            progress = int((elapsed / total_time) * 100)
-            JOBS[job_id]["progress"] = min(progress, 99)
-
-        # TODO: actual output file will be written by FFmpeg here
+        story_text = story.get("text", "")
+        video_path = video.get("file_path", "")
+        audio_path = os.path.join(OUTPUT_DIR, f"{job_id}_audio.mp3")
         output_path = os.path.join(OUTPUT_DIR, f"{job_id}.mp4")
+
+        # ── Step 1: TTS ────────────────────────────────────────────────────────
+        JOBS[job_id].update({"step": "Generating audio narration", "status": "processing", "progress": 5})
+
+        import edge_tts
+        await edge_tts.Communicate(story_text, voice="en-US-AriaNeural").save(audio_path)
+        JOBS[job_id]["progress"] = 30
+
+        # ── Step 2: Measure audio duration ────────────────────────────────────
+        JOBS[job_id].update({"step": "Analyzing audio", "progress": 35})
+
+        def get_audio_duration():
+            result = subprocess.run(
+                [
+                    "ffprobe", "-v", "quiet",
+                    "-print_format", "json",
+                    "-show_entries", "format=duration",
+                    audio_path,
+                ],
+                capture_output=True, text=True, timeout=10,
+            )
+            return float(json.loads(result.stdout)["format"]["duration"])
+
+        audio_duration = await asyncio.to_thread(get_audio_duration)
+        JOBS[job_id]["progress"] = 40
+
+        # ── Step 3: Composite — loop video + mix TTS audio ───────────────────
+        JOBS[job_id].update({"step": "Compositing video + audio", "progress": 45})
+
+        def do_composite():
+            subprocess.run(
+                [
+                    "ffmpeg", "-y",
+                    "-stream_loop", "-1",
+                    "-i", video_path,
+                    "-i", audio_path,
+                    "-vf", "scale=w=1080:h=1920:force_original_aspect_ratio=increase,crop=1080:1920",
+                    "-map", "0:v",
+                    "-map", "1:a",
+                    "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+                    "-c:a", "aac", "-b:a", "192k",
+                    "-shortest",
+                    output_path,
+                ],
+                timeout=600,
+                check=True,
+            )
+
+        await asyncio.to_thread(do_composite)
+
+        # Clean up temp audio
+        try:
+            os.remove(audio_path)
+        except Exception:
+            pass
+
         JOBS[job_id].update({
             "status":   "done",
             "progress": 100,
             "step":     "Complete",
-            "output":   output_path,
+            "output":   f"{job_id}.mp4",
         })
 
     except Exception as e:

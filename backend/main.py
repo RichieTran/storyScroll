@@ -26,6 +26,10 @@ app.include_router(generate.router, prefix="/api")
 os.makedirs("output", exist_ok=True)
 app.mount("/api/video", StaticFiles(directory="output"), name="video")
 
+# ── Serve library video files ─────────────────────────────────────────────────
+os.makedirs("videos", exist_ok=True)
+app.mount("/api/library", StaticFiles(directory="videos"), name="library")
+
 
 @app.get("/api/health")
 def health():

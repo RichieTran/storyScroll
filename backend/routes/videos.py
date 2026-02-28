@@ -2,11 +2,36 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, Query
 import aiofiles
 import os
 import uuid
+import subprocess
+import json
 
 router = APIRouter()
 
 VIDEOS_DIR = "videos"
 os.makedirs(VIDEOS_DIR, exist_ok=True)
+
+
+def probe_duration(file_path: str) -> str | None:
+    """Use ffprobe to read the actual video duration. Returns 'M:SS' or None."""
+    if not os.path.exists(file_path):
+        return None
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe", "-v", "quiet",
+                "-print_format", "json",
+                "-show_entries", "format=duration",
+                file_path,
+            ],
+            capture_output=True, text=True, timeout=5,
+        )
+        data     = json.loads(result.stdout)
+        duration = float(data["format"]["duration"])
+        mins     = int(duration // 60)
+        secs     = int(duration % 60)
+        return f"{mins}:{secs:02d}"
+    except Exception:
+        return None
 
 # ── In-memory library (replace with SQLite in Phase 5) ───────────────────────
 VIDEO_LIBRARY: list[dict] = [
@@ -16,7 +41,6 @@ VIDEO_LIBRARY: list[dict] = [
         "category":   "Minecraft Parkour",
         "categoryId": "minecraft",
         "file_path":  "videos/mc_parkour_1.mp4",
-        "duration":   "10:00",
         "color":      "#4ec9b0",
     },
     {
@@ -25,7 +49,6 @@ VIDEO_LIBRARY: list[dict] = [
         "category":   "Minecraft Parkour",
         "categoryId": "minecraft",
         "file_path":  "videos/mc_parkour_2.mp4",
-        "duration":   "8:30",
         "color":      "#4ec9b0",
     },
     {
@@ -34,7 +57,6 @@ VIDEO_LIBRARY: list[dict] = [
         "category":   "Subway Surfers",
         "categoryId": "subway",
         "file_path":  "videos/subway_1.mp4",
-        "duration":   "6:00",
         "color":      "#ce9178",
     },
     {
@@ -43,7 +65,6 @@ VIDEO_LIBRARY: list[dict] = [
         "category":   "Subway Surfers",
         "categoryId": "subway",
         "file_path":  "videos/subway_2.mp4",
-        "duration":   "5:45",
         "color":      "#ce9178",
     },
     {
@@ -52,7 +73,6 @@ VIDEO_LIBRARY: list[dict] = [
         "category":   "Trackmania",
         "categoryId": "trackmania",
         "file_path":  "videos/trackmania_1.mp4",
-        "duration":   "7:00",
         "color":      "#9cdcfe",
     },
     {
@@ -61,7 +81,6 @@ VIDEO_LIBRARY: list[dict] = [
         "category":   "GTA Driving",
         "categoryId": "gta",
         "file_path":  "videos/gta_1.mp4",
-        "duration":   "12:00",
         "color":      "#f44747",
     },
     {
@@ -70,7 +89,6 @@ VIDEO_LIBRARY: list[dict] = [
         "category":   "Satisfying / Slime",
         "categoryId": "satisfying",
         "file_path":  "videos/satisfying_1.mp4",
-        "duration":   "9:00",
         "color":      "#c586c0",
     },
     {
@@ -79,7 +97,6 @@ VIDEO_LIBRARY: list[dict] = [
         "category":   "Nature / Scenery",
         "categoryId": "nature",
         "file_path":  "videos/nature_1.mp4",
-        "duration":   "15:00",
         "color":      "#6a9955",
     },
 ]
@@ -94,9 +111,14 @@ async def list_videos(
     if category:
         videos = [v for v in videos if v["categoryId"] == category]
 
+    videos_out = [
+        {**v, "duration": probe_duration(v["file_path"])}
+        for v in videos
+    ]
+
     return {
-        "count":    len(videos),
-        "videos":   videos,
+        "count":      len(videos_out),
+        "videos":     videos_out,
         "categories": list({v["categoryId"]: v["category"] for v in VIDEO_LIBRARY}.items()),
     }
 
