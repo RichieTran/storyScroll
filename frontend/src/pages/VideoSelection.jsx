@@ -13,8 +13,9 @@ const CATEGORIES = [
 function VideoCard({ video, isSelected, onClick }) {
   const [thumbError, setThumbError] = useState(false)
 
-  const filename = video.file_path?.split('/').pop()
-  const videoUrl = filename ? `/api/library/${encodeURIComponent(filename)}` : null
+  // Prefer Cloudinary URL, fall back to local library path for dev
+  const videoUrl = video.url
+    || (video.file_path ? `/api/library/${encodeURIComponent(video.file_path.split('/').pop())}` : null)
   const showVideo = Boolean(videoUrl && !thumbError)
 
   return (

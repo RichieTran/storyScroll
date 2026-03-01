@@ -141,3 +141,8 @@ right now can you focus on phases 1 and 2. for the front end, i want a colorsche
 
 5. can you switch to edge-tts instead of gtts
 
+6. can you use cloudinary for this so when i host the site people can use the videos that i have in the backend
+
+7. cloudinary only allows files under 100mb, is there a better option to store my videos?
+
+8.

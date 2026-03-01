@@ -5,6 +5,8 @@ import asyncio
 import os
 import subprocess
 import json
+import httpx
+import aiofiles
 
 router = APIRouter()
 
@@ -30,11 +32,27 @@ class JobStatus(BaseModel):
 
 
 async def run_generation(job_id: str, story: dict, video: dict):
+    downloaded_video = None
     try:
         story_text = story.get("text", "")
-        video_path = video.get("file_path", "")
         audio_path = os.path.join(OUTPUT_DIR, f"{job_id}_audio.mp3")
         output_path = os.path.join(OUTPUT_DIR, f"{job_id}.mp4")
+
+        # ── Resolve video source ───────────────────────────────────────────────
+        video_url = video.get("url", "")
+        if video_url:
+            # Download from Cloudinary (or any remote URL) to a temp file
+            JOBS[job_id].update({"step": "Downloading background video", "status": "processing", "progress": 2})
+            downloaded_video = os.path.join(OUTPUT_DIR, f"{job_id}_bg.mp4")
+            async with httpx.AsyncClient(timeout=300.0) as client:
+                async with client.stream("GET", video_url) as resp:
+                    resp.raise_for_status()
+                    async with aiofiles.open(downloaded_video, "wb") as f:
+                        async for chunk in resp.aiter_bytes(chunk_size=1024 * 1024):
+                            await f.write(chunk)
+            video_path = downloaded_video
+        else:
+            video_path = video.get("file_path", "")
 
         # ── Step 1: TTS ────────────────────────────────────────────────────────
         JOBS[job_id].update({"step": "Generating audio narration", "status": "processing", "progress": 5})
@@ -85,11 +103,13 @@ async def run_generation(job_id: str, story: dict, video: dict):
 
         await asyncio.to_thread(do_composite)
 
-        # Clean up temp audio
-        try:
-            os.remove(audio_path)
-        except Exception:
-            pass
+        # Clean up temp audio and downloaded video
+        for tmp in [audio_path, downloaded_video]:
+            if tmp:
+                try:
+                    os.remove(tmp)
+                except Exception:
+                    pass
 
         JOBS[job_id].update({
             "status":   "done",
@@ -99,6 +119,13 @@ async def run_generation(job_id: str, story: dict, video: dict):
         })
 
     except Exception as e:
+        # Clean up any temp files on error too
+        for tmp in [downloaded_video]:
+            if tmp:
+                try:
+                    os.remove(tmp)
+                except Exception:
+                    pass
         JOBS[job_id].update({
             "status": "error",
             "error":  str(e),

@@ -33,7 +33,9 @@ def probe_duration(file_path: str) -> str | None:
     except Exception:
         return None
 
-# ── In-memory library (replace with SQLite in Phase 5) ───────────────────────
+# ── Video library ─────────────────────────────────────────────────────────────
+# For each entry, paste your Cloudinary URL into the "url" field.
+# Leave url as "" to fall back to local file_path (local dev only).
 VIDEO_LIBRARY: list[dict] = [
     {
         "id":         "mc-1",
@@ -41,6 +43,7 @@ VIDEO_LIBRARY: list[dict] = [
         "category":   "Minecraft Parkour",
         "categoryId": "minecraft",
         "file_path":  "videos/mc_parkour_1.mp4",
+        "url":        "https://pub-5b3b1cab604e4e8086e7788c488b3e29.r2.dev/mc_parkour_1.mp4",   # ← paste Cloudinary URL here
         "color":      "#4ec9b0",
     },
     {
@@ -49,6 +52,7 @@ VIDEO_LIBRARY: list[dict] = [
         "category":   "Minecraft Parkour",
         "categoryId": "minecraft",
         "file_path":  "videos/mc_parkour_2.mp4",
+        "url":        "",   # ← paste Cloudinary URL here
         "color":      "#4ec9b0",
     },
     {
@@ -57,6 +61,7 @@ VIDEO_LIBRARY: list[dict] = [
         "category":   "Subway Surfers",
         "categoryId": "subway",
         "file_path":  "videos/subway_1.mp4",
+        "url":        "https://pub-5b3b1cab604e4e8086e7788c488b3e29.r2.dev/subway_1.mp4",   # ← paste Cloudinary URL here
         "color":      "#ce9178",
     },
     {
@@ -65,6 +70,7 @@ VIDEO_LIBRARY: list[dict] = [
         "category":   "Subway Surfers",
         "categoryId": "subway",
         "file_path":  "videos/subway_2.mp4",
+        "url":        "",   # ← paste Cloudinary URL here
         "color":      "#ce9178",
     },
     {
@@ -73,6 +79,7 @@ VIDEO_LIBRARY: list[dict] = [
         "category":   "Trackmania",
         "categoryId": "trackmania",
         "file_path":  "videos/trackmania_1.mp4",
+        "url":        "https://pub-5b3b1cab604e4e8086e7788c488b3e29.r2.dev/trackmania_1.mp4",   # ← paste Cloudinary URL here
         "color":      "#9cdcfe",
     },
     {
@@ -81,6 +88,7 @@ VIDEO_LIBRARY: list[dict] = [
         "category":   "GTA Driving",
         "categoryId": "gta",
         "file_path":  "videos/gta_1.mp4",
+        "url":        "https://pub-5b3b1cab604e4e8086e7788c488b3e29.r2.dev/gta_1.mp4",   # ← paste Cloudinary URL here
         "color":      "#f44747",
     },
     {
@@ -89,6 +97,7 @@ VIDEO_LIBRARY: list[dict] = [
         "category":   "Satisfying / Slime",
         "categoryId": "satisfying",
         "file_path":  "videos/satisfying_1.mp4",
+        "url":        "",   # ← paste Cloudinary URL here
         "color":      "#c586c0",
     },
     {
@@ -97,6 +106,7 @@ VIDEO_LIBRARY: list[dict] = [
         "category":   "Nature / Scenery",
         "categoryId": "nature",
         "file_path":  "videos/nature_1.mp4",
+        "url":        "",   # ← paste Cloudinary URL here
         "color":      "#6a9955",
     },
 ]
@@ -111,10 +121,11 @@ async def list_videos(
     if category:
         videos = [v for v in videos if v["categoryId"] == category]
 
-    videos_out = [
-        {**v, "duration": probe_duration(v["file_path"])}
-        for v in videos
-    ]
+    videos_out = []
+    for v in videos:
+        # Only ffprobe local files; skip probing if a remote URL is configured
+        duration = probe_duration(v["file_path"]) if not v.get("url") else None
+        videos_out.append({**v, "duration": duration})
 
     return {
         "count":      len(videos_out),
@@ -134,24 +145,15 @@ async def get_video(video_id: str):
 
 @router.post("/videos/upload")
 async def upload_video(file: UploadFile = File(...)):
-    """Accept a user-uploaded video file for use as background footage."""
-    allowed = (".mp4", ".mov", ".webm")
-    if not any(file.filename.lower().endswith(ext) for ext in allowed):
-        raise HTTPException(
-            status_code=400,
-            detail="Only .mp4, .mov, and .webm files are supported."
-        )
+    """Upload a custom background video."""
+    if not file.filename.lower().endswith((".mp4", ".mov", ".webm")):
+        raise HTTPException(status_code=422, detail="Only .mp4, .mov, and .webm files are supported.")
 
-    # 500 MB limit
-    MAX_SIZE = 500 * 1024 * 1024
+    file_id  = str(uuid.uuid4())[:8]
+    ext      = os.path.splitext(file.filename)[1]
+    save_path = os.path.join(VIDEOS_DIR, f"{file_id}{ext}")
+
     contents = await file.read()
-    if len(contents) > MAX_SIZE:
-        raise HTTPException(status_code=413, detail="File too large (max 500 MB).")
-
-    file_id   = str(uuid.uuid4())[:8]
-    save_name = f"{file_id}_{file.filename}"
-    save_path = os.path.join(VIDEOS_DIR, save_name)
-
     async with aiofiles.open(save_path, "wb") as f:
         await f.write(contents)
 
