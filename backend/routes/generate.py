@@ -4,11 +4,22 @@ import uuid
 import asyncio
 import os
 import subprocess
-import json
 import httpx
 import aiofiles
+import re
 
 router = APIRouter()
+
+# Expand common Reddit acronyms so TTS reads them naturally
+_ACRONYM_MAP = {
+    r"\bTIFU\b": "Today I fucked up",
+    r"\bAITA\b": "Am I the asshole",
+}
+
+def expand_acronyms(text: str) -> str:
+    for pattern, replacement in _ACRONYM_MAP.items():
+        text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+    return text
 
 OUTPUT_DIR = "output"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -17,9 +28,15 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 JOBS: dict[str, dict] = {}
 
 
+VOICE_IDS = {
+    "male":   "pNInz6obpgDQGcFmaJgB",  # Adam
+    "female": "21m00Tcm4TlvDq8ikWAM",  # Rachel
+}
+
 class GenerateRequest(BaseModel):
     story: dict   # { text, source, word_count, ... }
     video: dict   # { id, name, file_path, ... }
+    voice: str = "male"
 
 
 class JobStatus(BaseModel):
@@ -31,10 +48,10 @@ class JobStatus(BaseModel):
     error:    str | None = None
 
 
-async def run_generation(job_id: str, story: dict, video: dict):
+async def run_generation(job_id: str, story: dict, video: dict, voice: str = "male"):
     downloaded_video = None
     try:
-        story_text = story.get("text", "")
+        story_text = expand_acronyms(story.get("text", ""))
         audio_path = os.path.join(OUTPUT_DIR, f"{job_id}_audio.mp3")
         output_path = os.path.join(OUTPUT_DIR, f"{job_id}.mp4")
 
@@ -57,27 +74,24 @@ async def run_generation(job_id: str, story: dict, video: dict):
         # ── Step 1: TTS ────────────────────────────────────────────────────────
         JOBS[job_id].update({"step": "Generating audio narration", "status": "processing", "progress": 5})
 
-        import edge_tts
-        await edge_tts.Communicate(story_text, voice="en-US-AriaNeural").save(audio_path)
+        def do_tts():
+            from elevenlabs.client import ElevenLabs
+            client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
+            audio = client.text_to_speech.convert(
+                voice_id=VOICE_IDS.get(voice, VOICE_IDS["male"]),
+                text=story_text,
+                model_id="eleven_multilingual_v2",
+                output_format="mp3_44100_128",
+            )
+            with open(audio_path, "wb") as f:
+                for chunk in audio:
+                    if chunk:
+                        f.write(chunk)
+
+        await asyncio.to_thread(do_tts)
         JOBS[job_id]["progress"] = 30
 
-        # ── Step 2: Measure audio duration ────────────────────────────────────
-        JOBS[job_id].update({"step": "Analyzing audio", "progress": 35})
-
-        def get_audio_duration():
-            result = subprocess.run(
-                [
-                    "ffprobe", "-v", "quiet",
-                    "-print_format", "json",
-                    "-show_entries", "format=duration",
-                    audio_path,
-                ],
-                capture_output=True, text=True, timeout=10,
-            )
-            return float(json.loads(result.stdout)["format"]["duration"])
-
-        audio_duration = await asyncio.to_thread(get_audio_duration)
-        JOBS[job_id]["progress"] = 40
+        JOBS[job_id].update({"step": "Analyzing audio", "progress": 40})
 
         # ── Step 3: Composite — loop video + mix TTS audio ───────────────────
         JOBS[job_id].update({"step": "Compositing video + audio", "progress": 45})
@@ -89,15 +103,15 @@ async def run_generation(job_id: str, story: dict, video: dict):
                     "-stream_loop", "-1",
                     "-i", video_path,
                     "-i", audio_path,
-                    "-vf", "scale=w=1080:h=1920:force_original_aspect_ratio=increase,crop=1080:1920",
+                    "-vf", "scale=w=720:h=1280:force_original_aspect_ratio=increase,crop=720:1280",
                     "-map", "0:v",
                     "-map", "1:a",
-                    "-c:v", "libx264", "-preset", "fast", "-crf", "23",
-                    "-c:a", "aac", "-b:a", "192k",
+                    "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26",
+                    "-c:a", "aac", "-b:a", "128k",
                     "-shortest",
                     output_path,
                 ],
-                timeout=600,
+                timeout=1800,
                 check=True,
             )
 
@@ -140,6 +154,7 @@ async def start_generation(
     """Queue a video generation job and return a job ID immediately."""
     story = request.story
     video = request.video
+    voice = request.voice
 
     if not story.get("text"):
         raise HTTPException(status_code=422, detail="Story text is required.")
@@ -156,7 +171,7 @@ async def start_generation(
         "error":    None,
     }
 
-    background_tasks.add_task(run_generation, job_id, story, video)
+    background_tasks.add_task(run_generation, job_id, story, video, voice)
 
     return {
         "job_id":  job_id,

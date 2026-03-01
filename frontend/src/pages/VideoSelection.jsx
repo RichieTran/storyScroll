@@ -115,6 +115,7 @@ export default function VideoSelection() {
   const [selected, setSelected]       = useState(null)
   const [uploadedFile, setUploadedFile] = useState(null)
   const [tab, setTab]                 = useState('library')
+  const [voice, setVoice]             = useState('male')
   const fileRef = useRef()
 
   useEffect(() => {
@@ -148,7 +149,7 @@ export default function VideoSelection() {
 
   function handleGenerate() {
     if (!selected) return
-    navigate('/loading', { state: { story, video: selected } })
+    navigate('/loading', { state: { story, video: selected, voice } })
   }
 
   return (
@@ -314,6 +315,26 @@ export default function VideoSelection() {
           )}
         </div>
       )}
+
+      {/* Voice picker */}
+      <div style={styles.voicePicker}>
+        <span style={styles.voiceLabel}>Narrator Voice</span>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {[
+            { id: 'male',   label: 'Male'   },
+            { id: 'female', label: 'Female' },
+          ].map((v) => (
+            <button
+              key={v.id}
+              className="btn btn-sm"
+              style={{ ...styles.pill, ...(voice === v.id ? styles.pillActive : {}) }}
+              onClick={() => setVoice(v.id)}
+            >
+              {v.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Actions */}
       <div style={styles.actions}>
@@ -516,12 +537,25 @@ const styles = {
     alignItems: 'center',
     padding: '48px 0',
   },
+  voicePicker: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 24,
+    paddingTop: 16,
+    borderTop: '1px solid #3e3e42',
+    marginBottom: 16,
+  },
+  voiceLabel: {
+    fontSize: 13,
+    color: '#9d9d9d',
+    fontWeight: 500,
+  },
   actions: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingTop: 16,
     borderTop: '1px solid #3e3e42',
-    marginTop: 24,
   },
 }

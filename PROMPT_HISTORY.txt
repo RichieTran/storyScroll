@@ -145,4 +145,6 @@ right now can you focus on phases 1 and 2. for the front end, i want a colorsche
 
 7. cloudinary only allows files under 100mb, is there a better option to store my videos?
 
-8.
+8. Can you change it from edge-tts to elevenlabs, i have an account so let me know what i have to do
+
+9. can you make it so the user can choose between two voices, a male (adam) and a female voice

@@ -27,7 +27,7 @@ const FUN_FACTS = [
 export default function Loading() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { story, video } = location.state || {}
+  const { story, video, voice } = location.state || {}
 
   const [jobId, setJobId]         = useState(null)
   const [progress, setProgress]   = useState(0)
@@ -43,7 +43,7 @@ export default function Loading() {
         const res  = await fetch('/api/generate', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ story, video }),
+          body:    JSON.stringify({ story, video, voice }),
         })
         const data = await res.json()
         if (!res.ok) throw new Error(data.detail || 'Generation failed')
